@@ -1,10 +1,9 @@
 /datum/map/site53
 
 	post_round_safe_areas = list (
-		/area/site53/tram/lcz,
 		/area/centcom,
 		/area/site53/surface/bunker,
-		/area/shuttle/escape_pod10/station
+		/area/shuttle/escape_pod7/station
 		)
 
 /area/turbolift
@@ -81,6 +80,22 @@
 	lift_floor_label = "SCP-106 Observation"
 	lift_floor_name = "SCP-106 Observation"
 	lift_announce_str = "Arriving at SCP-106 Observation: Containment Observation."
+	requires_power = 0
+	dynamic_lighting = 1
+
+/area/turbolift/site53/logisticstorage
+	name = "lift (Logistics Storage)"
+	lift_floor_label = "Logistics Storage"
+	lift_floor_name = "Logistics Storage"
+	lift_announce_str = "Arriving at Logistics Storage: Secure Storage."
+	requires_power = 0
+	dynamic_lighting = 1
+
+/area/turbolift/site53/logistics
+	name = "lift (Logistics)"
+	lift_floor_label = "Logistics"
+	lift_floor_name = "Logistics"
+	lift_announce_str = "Arriving at Logistics: Locker Rooms, Lobby, Loading Docks."
 	requires_power = 0
 	dynamic_lighting = 1
 
@@ -240,6 +255,18 @@
 	area_flags = AREA_FLAG_RAD_SHIELDED
 	sound_env = SMALL_ENCLOSED
 
+/area/site53/ulcz/generalpurpose
+	name = "\improper General Purpose Testing Laboratory"
+	icon_state = "research"
+	area_flags = AREA_FLAG_RAD_SHIELDED
+	sound_env = SMALL_ENCLOSED
+
+/area/site53/ulcz/scp078
+	name = "\improper SCP-078"
+	icon_state = "research"
+	area_flags = AREA_FLAG_RAD_SHIELDED
+	sound_env = SMALL_ENCLOSED
+
 /area/site53/ulcz/scp173
 	name = "\improper SCP-173"
 	icon_state = "research"
@@ -266,6 +293,18 @@
 
 /area/site53/llcz/scp012
 	name = "\improper SCP-012"
+	icon_state = "research"
+	area_flags = AREA_FLAG_RAD_SHIELDED
+	sound_env = SMALL_ENCLOSED
+
+/area/site53/llcz/scp013
+	name = "\improper SCP-013"
+	icon_state = "research"
+	area_flags = AREA_FLAG_RAD_SHIELDED
+	sound_env = SMALL_ENCLOSED
+
+/area/site53/llcz/scp131
+	name = "\improper SCP-131"
 	icon_state = "research"
 	area_flags = AREA_FLAG_RAD_SHIELDED
 	sound_env = SMALL_ENCLOSED
@@ -346,7 +385,7 @@
 	turf_initializer = /decl/turf_initializer/maintenance
 
 /area/site53/lowertrams/escape
-	name = "\improper Escape Train Hub"
+	name = "\improper Departures Train Station"
 	icon_state = "centcom"
 	area_flags = AREA_FLAG_RAD_SHIELDED
 	requires_power = 0
@@ -870,4 +909,9 @@
 /area/site53/reswing/robotics
 	name = "\improper Robotics Laboratory"
 	icon_state = "research"
+	area_flags = AREA_FLAG_RAD_SHIELDED
+
+/area/site53/logistics/logistics
+	name = "\improper Logistics"
+	icon_state = "quart"
 	area_flags = AREA_FLAG_RAD_SHIELDED

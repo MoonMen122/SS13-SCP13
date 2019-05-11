@@ -41,6 +41,10 @@
 			new /mob/living/simple_animal/scp_999 (loc)
 			delete_me = 1
 			return
+		if("scp420j")
+			GLOB.possible_420j += loc
+			delete_me = 1
+			return
 		if("JoinLate")
 			GLOB.latejoin += loc
 			delete_me = 1
@@ -55,6 +59,10 @@
 			return
 		if("JoinLateDclass")
 			GLOB.latejoin_dclass += loc
+			delete_me = 1
+			return
+		if("JoinLateComms")
+			GLOB.latejoin_comms += loc
 			delete_me = 1
 			return
 		if("JoinLatelcz")
@@ -311,7 +319,8 @@
 		min_y = max(src.y, min_y)
 		max_y = min(src.y + generation_height, max_y)
 
-	new /datum/random_map/automata/cave_system(seed, min_x, min_y, src.z, max_x, max_y)
-	new /datum/random_map/noise/ore(seed, min_x, min_y, src.z, max_x, max_y)
-
-	GLOB.using_map.refresh_mining_turfs(src.z)
+	// don't hold up SSatoms
+	spawn(0)
+		new /datum/random_map/automata/cave_system(seed, min_x, min_y, src.z, max_x, max_y)
+		new /datum/random_map/noise/ore(seed, min_x, min_y, src.z, max_x, max_y)
+		GLOB.using_map.refresh_mining_turfs(src.z)

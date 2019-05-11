@@ -1,5 +1,6 @@
 #define HUGGING 1
 #define IMMOBILIZING 2
+GLOBAL_LIST_EMPTY(scp999s)
 
 /datum/scp/SCP_999
 	name = "SCP-999"
@@ -7,6 +8,7 @@
 	classification = SAFE
 
 /mob/living/simple_animal/scp_999
+	name = "SCP-999"
 	desc = "A large, amorphous, gelatinous mass of translucent orange slime. It looks really happy."
 	icon = 'icons/SCP/scp-999.dmi'
 	icon_living = "SCP-999"
@@ -20,8 +22,16 @@
 	var/attached_mode = HUGGING
 	var/list/last_healing = list()
 
-/mob/living/simple_animal/scp999/examine(mob/user)
+/mob/living/simple_animal/scp_999/examine(mob/user)
 	user << "<b><span class = 'success'><big>SCP-999</big></span></b> - [desc]"
+
+/mob/living/simple_animal/scp_999/New()
+	..()
+	GLOB.scp999s += src
+	
+/mob/living/simple_animal/scp_999/Destroy()
+	GLOB.scp999s -= src
+	..()
 
 /mob/living/simple_animal/scp_999/update_icon()
 	if(stat != DEAD && resting)
@@ -43,10 +53,10 @@
 		if(last_healing[attached] == null || ((last_healing[attached] + 2 MINUTES) >= world.time))
 			last_healing[attached] = world.time
 			if(attached_mode == HUGGING)
-				attached.adjustOxyLoss(rand(20,30))
-				attached.adjustToxLoss(rand(20,30))
-				attached.adjustBruteLoss(rand(20,30))
-				attached.adjustFireLoss(rand(20, 30))
+				attached.adjustOxyLoss(-rand(20,30))
+				attached.adjustToxLoss(-rand(20,30))
+				attached.adjustBruteLoss(-rand(20,30))
+				attached.adjustFireLoss(-rand(20, 30))
 				attached.adjustHalLoss(-200)
 				to_chat(attached, "<span class='notice'>You feel your wounds grow numb...</span>")
 				attached.emote(pick("laugh","giggle","smile","grin"))

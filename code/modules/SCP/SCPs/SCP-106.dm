@@ -8,6 +8,7 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 	var/last_x = -1
 	var/last_y = -1
 	var/last_z = -1
+	var/confusing = FALSE
 
 /mob/living/carbon/human/scp106/examine(mob/user)
 	user << "<b><span class = 'keter'><big>SCP-106</big></span></b> - [desc]"
@@ -39,6 +40,8 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 	if (!(loc in GLOB.scp106_floors))
 		verbs += /mob/living/carbon/human/scp106/proc/enter_pocket_dimension
 
+	verbs += /mob/living/carbon/human/scp106/proc/confuse_victims
+
 	set_species("SCP-106")
 	GLOB.scp106s += src
 
@@ -66,9 +69,6 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 
 	// stand_icon tends to come back after movement
 	fix_icons()
-	for (var/obj/sprite_helper/scp106/O in vis_contents)
-		O.dir = dir
-		break
 
 /mob/living/carbon/human/scp106/proc/fix_icons()
 	icon = null
@@ -82,8 +82,13 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 
 	// we're lying, turn right
 	var/obj/scp106_sprite_helper = vis_contents[vis_contents.len]
-	if (lying)
+
+	if (lying || resting)
 		scp106_sprite_helper.icon = turn(icon('icons/mob/scp106.dmi'), 90)
+	else
+		scp106_sprite_helper.icon = 'icons/mob/scp106.dmi'
+
+	scp106_sprite_helper.dir = dir
 
 /mob/living/carbon/human/scp106/get_pressure_weakness()
 	return 0
@@ -103,6 +108,29 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 		return ..(L)
 	visible_message("<span class = 'danger'>[L] is warped away!</span>")
 	L.forceMove(pick(GLOB.scp106_floors))
+
+/mob/living/carbon/human/scp106/Life()
+	. = ..()
+
+	// update confusing stuff
+	if (stat == CONSCIOUS)
+		if (confusing)
+			for (var/client in GLOB.clients)
+				var/client/C = client
+				if (ishuman(C.mob) && !isscp106(C.mob))
+					var/mob/living/carbon/human/H = C.mob
+					if (H.stat == CONSCIOUS && (get_area(H) == get_area(GLOB.scp106_floors[1]) == get_area(src)))
+						C.dir = turn(NORTH, pick(-90, -180, -270))
+					else
+						C.dir = NORTH
+				else
+					C.dir = NORTH
+	else
+		if (confusing)
+			confusing = FALSE
+			for (var/client in GLOB.clients)
+				var/client/C = client
+				C.dir = NORTH
 
 // NPC stuff
 /mob/living/carbon/human/scp106/proc/getTarget()
@@ -154,7 +182,7 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 
 	if (!(target in orange(1, src)))
 		// moves slightly faster than humans
-		walk_to(src, target, 1, 0.7+config.run_speed)
+		walk_to(src, target, 1, 0+config.run_speed)
 		return TRUE
 
 	walk(src, null)
@@ -169,13 +197,19 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 	if (!G)
 		visible_message("<span class = 'danger'><i>[name] reaches towards [target]!</i></danger>")
 		G = make_grab(src, target)
-		if (G)
-			G.upgrade(TRUE)
+
+		if (!(loc in GLOB.scp106_floors))
+			if (G)
+				G.upgrade(TRUE)
+		else
+			if (G)
+				G.locked = TRUE
+
 		target.Weaken(1)
 		// NPC stuff
 		if (!client)
 			spawn (20)
-				if (G)
+				if (G && !G.locked)
 					G.last_upgrade = -1
 					G.upgrade(FALSE)
 
@@ -202,13 +236,15 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 	verbs -= /mob/living/carbon/human/scp106/proc/go_back
 	verbs += /mob/living/carbon/human/scp106/proc/enter_pocket_dimension
 
-#define PHASE_TIME 30
+#define PHASE_TIME (2 SECONDS)
 /mob/living/carbon/human/scp106/var/phase_cooldown = -1
 /mob/living/carbon/human/scp106/proc/phase_through_airlock()
 	set name = "Phase Through Object"
 	set category = "SCP"
 	set desc = "Phase through an object in front of you."
+
 	if (world.time < phase_cooldown)
+		to_chat(src, "<span class = 'warning'>You can't phase again yet.</span>")
 		return
 
 	for (var/obj/O in get_step(src, dir))
@@ -216,10 +252,20 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 		if (!isstructure(O) && !ismachinery(O))
 			continue
 
-		for (var/obj/machinery/shieldwall/SW in get_turf(O))
-			return 
+		if (istype(O, /obj/machinery/shieldwall) || istype(O, /obj/machinery/shieldwallgen))
+			continue
 
-		phase_cooldown = world.time + (PHASE_TIME + 5)
+		for (var/obj/OO in get_turf(O))
+			if (OO.density && OO != O)
+				return
+
+		var/turf/target = get_step(O, dir)
+		if (target.density)
+			return
+
+		visible_message("<span class = 'danger'>[src] starts to phase through \the [O].</span>")
+
+		phase_cooldown = world.time + PHASE_TIME + 5
 
 		var/initial_loc = loc
 		var/atom/sprite = null
@@ -250,6 +296,7 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 		if (do_after(src, PHASE_TIME, O))
 			forceMove(get_step(src, dir))
 			forceMove(get_step(src, dir))
+			visible_message("<span class = 'danger'>[src] phases through \the [O].</span>")
 
 		__fixsprite__
 
@@ -274,6 +321,13 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 		verbs -= /mob/living/carbon/human/scp106/proc/enter_pocket_dimension
 		verbs += /mob/living/carbon/human/scp106/proc/go_back
 
+/mob/living/carbon/human/scp106/proc/confuse_victims()
+	set name = "Confuse Victims"
+	set category = "SCP"
+	set desc = "Confuse your victims by making them see upside-down."
+	confusing = !confusing
+	to_chat(src, "You are [confusing ? "now confusing" : "no longer confusing"] your victims.")
+
 /mob/living/carbon/human/scp106/apply_damage(var/damage = 0, var/damagetype = BRUTE, var/def_zone = null, var/blocked = 0, var/damage_flags = 0, var/obj/used_weapon = null, var/obj/item/organ/external/given_organ = null)
 	. = ..(damage, damagetype, def_zone, blocked, damage_flags, used_weapon, given_organ)
 	if (getBruteLoss() + getFireLoss() + getToxLoss() + getCloneLoss() >= 200)
@@ -282,7 +336,6 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 			forceMove(pick(GLOB.scp106_floors))
 			verbs -= /mob/living/carbon/human/scp106/proc/enter_pocket_dimension
 			verbs += /mob/living/carbon/human/scp106/proc/go_back
-
 
 // special objects
 /obj/scp106_exit
@@ -311,8 +364,31 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 	if (!istype(L) || isscp106(L))
 		return ..(L)
 	if (prob(50))
-		L.adjustBrainLoss(500)
+		L.adjustBrainLoss(1000)
 	else
+		visible_message("<span class = 'danger'>[L] is warped away!</span>")
+		L.forceMove(pick(GLOB.scp106_floors))
+
+/obj/scp106_random
+	icon = 'icons/mob/screen1.dmi'
+	icon_state = "x2"
+	anchored = 1.0
+	unacidable = 1
+	simulated = 0
+	invisibility = 100
+
+/obj/scp106_random/Crossed(var/mob/living/L)
+	if (!istype(L) || isscp106(L))
+		return ..(L)
+	// 15% chance of instant death
+	else if (prob(15))
+		L.adjustBrainLoss(1000)
+	// 15% chance of getting back to the station
+	else if (prob(15))
+		visible_message("<span class = 'danger'>[L] is warped away!</span>")
+		L.forceMove(pick(GLOB.simulated_turfs_scp106))
+	// 70% chance of going somewhere in the PD
+	else if (prob(70))
 		visible_message("<span class = 'danger'>[L] is warped away!</span>")
 		L.forceMove(pick(GLOB.scp106_floors))
 
@@ -376,37 +452,43 @@ GLOBAL_LIST_EMPTY(scp106_spawnpoints)
 
 /obj/structure/femur_breaker/proc/activate()
 	set waitfor = FALSE
-	for (var/mob/living/carbon/human/H in get_turf(src))
-		playsound(src, 'sound/scp/machinery/femur_breaker.ogg', 100)
-		sleep(2.8 SECONDS)
-		for (var/obj/item/organ/external/leg/L in H.organs)
-			if (!(L.status & BROKEN))
-				L.fracture()
-				if (spent_mobs[H])
-					return
-				sleep(10 SECONDS)
-				for (var/scp106 in GLOB.scp106s)
-					var/atom/movable/A = scp106
-					A.forceMove(GLOB.scp106_spawnpoints[1])
-					break
-				sleep(40 SECONDS)
-				for (var/scp106 in GLOB.scp106s)
-					var/atom/movable/A = scp106
-					if (get_area(A) != get_area(GLOB.scp106_spawnpoints[1]))
-						if (!(A.loc in GLOB.scp106_floors))
-							return // failed
-				sleep(30 SECONDS)
-				var/active_shield_generators = 0
-				for (var/obj/machinery/shieldwallgen/G in get_area(GLOB.scp106_spawnpoints[1]))
-					if (G.active)
-						++active_shield_generators
 
-				if (active_shield_generators < 4)
-					return // failed
+	var/mob/living/carbon/human/H = buckled_mob
 
-				world << sound('sound/scp/machinery/femur_breaker_success.ogg')
-				spent_mobs[H] = TRUE
+	// because monkeys are humans
+	if (istype(H.species, /datum/species/monkey))
+		return
+
+	world << sound('sound/scp/machinery/femur_breaker.ogg')
+	sleep(2.8 SECONDS)
+
+	for (var/obj/item/organ/external/leg/L in H.organs)
+		if (!(L.status & BROKEN))
+			L.fracture()
+			if (spent_mobs[H])
 				return
+			sleep(10 SECONDS)
+			for (var/scp106 in GLOB.scp106s)
+				var/atom/movable/A = scp106
+				A.forceMove(GLOB.scp106_spawnpoints[1])
+			sleep(40 SECONDS)
+			for (var/scp106 in GLOB.scp106s)
+				var/atom/movable/A = scp106
+				if (get_area(A) != get_area(GLOB.scp106_spawnpoints[1]))
+					if (!(A.loc in GLOB.scp106_floors))
+						return // failed
+			sleep(30 SECONDS)
+			var/active_shield_generators = 0
+			for (var/obj/machinery/shieldwallgen/G in get_area(GLOB.scp106_spawnpoints[1]))
+				if (G.active)
+					++active_shield_generators
+
+			if (active_shield_generators < 4)
+				return // failed
+
+			world << sound('sound/scp/machinery/femur_breaker_success.ogg')
+			spent_mobs[H] = TRUE
+			return
 
 /obj/machinery/button/femur_breaker
 	name = "Femur Breaker Button"
